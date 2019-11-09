@@ -17,7 +17,8 @@ implied.
 misty.Debug("starting skill helloworld_facedetection");
 
 // Register for face detection event
-misty.RegisterEvent("FaceTrack", "FaceRecognition", 250, true);
+misty.RegisterEvent("SeeFace", "FaceRecognition", 250);
+misty.RegisterEvent("FaceTrack", "FaceRecognition", 250, true, "Synchronous");
 // Timer event cancels the skill
 // if no face is detected after 15 seconds
 // misty.RegisterTimerEvent("FaceDetectionTimeout", 15000);
@@ -30,17 +31,54 @@ misty.RegisterEvent("FaceTrack", "FaceRecognition", 250, true);
 // misty.AddPropertyTest("FrontTOF", "DistanceInMeters", "<=", 1.0, "double");
 
 // misty.PlayAudio("s_Joy3.wav");
+
+var currentBearing = 0;
+var currentElevation = 0;
+
+misty.MoveHeadDegrees(0, 0, 0, 100, 0, 0); 
+misty.ChangeLED(0, 0, 0);
+
 misty.StartFaceDetection();
+
+// head movement range
+// pitch - 40(up) to 26(down)
+// roll - 40(left) to 40(right)
+// yaw - 81(right) to 81(left)
+
+
+function _SeeFace(data){
+  
+  misty.MoveArms(0, 0, 100, 100, null, 2000);
+  misty.ChangeLED(255, 255, 255);
+  misty.PlayAudio("s_Joy3.wav");
+}
+
 
 // FaceDetection event callback
 function _FaceTrack(data) {
-    misty.Debug("Face Detected");
+  misty.Debug("Face Detected");
   var faceTrack = data.PropertyTestResults[0].PropertyParent;
   misty.Debug("Face Detected, at bearing " + faceTrack.Bearing + " and elevation " + faceTrack.Elevation);
-  misty.MoveHeadDegrees(faceTrack.Bearing, 0, faceTrack.Elevation, 60, 0, 0); // pitch up
+  
+  currentBearing += faceTrack.Bearing;
+  currentElevation += faceTrack.Elevation;
+  
+  if(currentBearing > 81){
+    currentBearing = 81;
+  }else if(currentBearing < -81){
+    currentBearing = -81;
+  }
+  
+  if(currentElevation > 40){
+    currentElevation = 40;
+  } else if (currentElevation < -26){
+    currentElevation = -26;
+  }
+  
+  misty.Debug("Final elevation and bearing: " + currentElevation + " " + currentBearing);
+  
+  misty.MoveHeadDegrees(faceTrack.Elevation, 0, faceTrack.Bearing, 100, 0, 0); 
 
-  misty.ChangeLED(255, 255, 255);
-  misty.PlayAudio("s_Joy3.wav");
 
   // Stop face detection
   // misty.StopFaceDetection();
