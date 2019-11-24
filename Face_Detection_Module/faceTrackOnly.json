@@ -1,0 +1,19 @@
+{
+    "Name": "FaceTracking",
+    "UniqueId": "039491fc-23be-4e04-ba47-9c6f3573d82e",
+    "Description": "My skill is amazing!",
+    "StartupRules": [
+        "Manual",
+        "Robot"
+    ],
+    "Language": "javascript",
+    "BroadcastMode": "verbose",
+    "TimeoutInSeconds": 600,
+    "CleanupOnCancel": true,
+    "WriteToLog": false,
+    "Parameters": {
+        "int": 10,
+        "double": 20.5,
+        "string": "twenty"
+    }
+}

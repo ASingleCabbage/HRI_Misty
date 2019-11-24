@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <!-- <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script> -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+
+    <title>Misty Dashboard</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row filler" style="height: 40px;"></div>
+        <p>Run with the console open (F12 on Chrome) to see debug output. Resetting Misty after every interaction will
+            have to be done manually. The skill used in the experiment now resets head poistion if a face isn't detected
+            for 5 seconds. This should stop it from turning to the left/right and staring into the void. Also, the LED
+            flashes faintly when a face is seen. The distance for triggering the candy.wav audio is roughly 1.5 meters,
+            but tweakable in code.</p>
+        <div class="row">
+            <input type="text" class="form-control col-9" id="ip" name="ip" value="0.0.0.0">
+            <button id="update" type="button" class="btn btn-info col-3">Update Misty IP</button>
+        </div>
+
+
+        <div class="row filler" style="height: 30px;"></div>
+        <h2>Run main skill</h2>
+        <button id="stop" type="button" class="btn btn-danger">STOP</button>
+        <button id="run" type="button" class="btn btn-success">RUN</button>
+        <button id="reset" type="button" class="btn btn-success">RESET</button>
+        <br>
+        <br>
+        <h2>Track face only</h2>
+        <button id="stop_face" type="button" class="btn btn-danger">STOP</button>
+        <button id="run_face" type="button" class="btn btn-success">RUN</button>
+        <button id="reset_face" type="button" class="btn btn-success">RESET</button>
+        <br>
+        <p>Start and stop starts and stops Misty skills respectively, and reset stops then starts.</p>
+
+        <div class="row filler" style="height: 30px;"></div>
+        <h2>Play audio</h2>
+        <button id="audio_candy" type="button" class="btn btn-primary">Candy</button>
+        <button id="audio_class" type="button" class="btn btn-primary">Helping with class</button>
+        <br>
+        <br>
+        <p>This requires the audio files candy.wav and class.wav to be already loaded in Misty, and the filename has to
+            match.</p>
+
+
+    </div>
+
+    <script>
+        var mistyIp = '0.0.0.0'
+        var mainSkillId = '63b2cac5-4674-43ce-a048-670303a339ec'
+        var faceTrackSkillId = '039491fc-23be-4e04-ba47-9c6f3573d82e'
+
+        $(document).ready(function () {
+            if (sessionStorage.getItem("mistyIp") !== null) {
+                mistyIp = sessionStorage.getItem("mistyIp")
+
+                $('input[name=ip]').val(mistyIp)
+            }
+        })
+
+        $('#update').click(function () {
+            mistyIp = $('input[name=ip]').val().trim()
+            sessionStorage.setItem("mistyIp", mistyIp);
+            console.log('updating misty ip to ' + mistyIp)
+        })
+
+        function stopSkill(skillId) {
+            console.log('triggering stop')
+            Promise.race([
+                fetch(`http://${mistyIp}/api/skills/cancel`, {
+                    method: 'POST',
+                    body: `{ "skill":"${skillId}" }`
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+            ])
+                .then(response => response.json())
+                .then(jsonData => console.log(jsonData))
+        }
+
+        function startSkill(skillId) {
+            console.log('triggering start')
+            Promise.race([
+                fetch(`http://${mistyIp}/api/skills/start`, {
+                    method: 'POST',
+                    body: `{ "skill":"${skillId}","method":"" }`
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+            ])
+                .then(response => response.json())
+                .then(jsonData => console.log(jsonData))
+        }
+
+        function restartSkill(skillId) {
+            console.log('triggering restart')
+            Promise.race([
+                fetch(`http://${mistyIp}/api/skills/cancel`, {
+                    method: 'POST',
+                    body: `{ "skill":"${skillId}" }`
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+            ])
+                .then(response => response.json())
+                .then(jsonData => console.log(jsonData)).then(Promise.race([
+                    fetch(`http://${mistyIp}/api/skills/start`, {
+                        method: 'POST',
+                        body: `{ "skill":"${skillId}","method":"" }`
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+                ])
+                    .then(response => response.json())
+                    .then(jsonData => console.log(jsonData)))
+        }
+
+        function playAudio(filename) {
+            console.log('playing audio ' + filename)
+            Promise.race([
+                fetch(`http://${mistyIp}/api/audio/play`, {
+                    method: 'POST',
+                    body: `{ "FileName":"${filename}" }`
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+            ])
+                .then(response => response.json())
+                .then(jsonData => console.log(jsonData))
+
+        }
+
+        $('#stop').click(function () {
+            stopSkill(mainSkillId)
+        })
+
+        $('#run').click(function () {
+            startSkill(mainSkillId)
+        })
+
+        $('#reset').click(function () {
+            restartSkill(mainSkillId)
+        })
+
+        $('#stop_face').click(function () {
+            stopSkill(faceTrackSkillId)
+        })
+
+        $('#run_face').click(function () {
+            startSkill(faceTrackSkillId)
+        })
+
+        $('#reset_face').click(function () {
+            restartSkill(faceTrackSkillId)
+        })
+
+        $('#audio_candy').click(function () {
+            playAudio('candy.wav')
+        })
+
+        $('#audio_class').click(function () {
+            playAudio('class.wav')
+        })
+
+    </script>
+
+</body>
+
+</html>
